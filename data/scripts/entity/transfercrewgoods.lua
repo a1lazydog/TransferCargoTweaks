@@ -549,6 +549,53 @@ function TransferCrewGoods.createTorpedoesTab(tabbedWindow)
     TransferCrewGoods.createTorpedoesTabOneSide(torpedoesTab, vSplit.right, "data/textures/icons/arrow-left2.png", false)
 end
 
+function TransferCrewGoods.checkPermissionsAndDistance(player, source, target)
+    if source.__avoriontype == "Uuid" then
+        source = Entity(source)
+    end
+
+    if target.__avoriontype == "Uuid" then
+        target = Entity(target)
+    end
+
+    if not valid(source) or not valid(target) then
+        return false
+    end
+
+    if source.factionIndex ~= callingPlayer and source.factionIndex ~= player.allianceIndex then
+        player:sendChatMessage("", ChatMessageType.Error, "You don't own this craft."%_t)
+        return false
+    end
+
+    if TCTConfig.RequireAlliancePrivileges then
+        local requiredPrivileges = {}
+        if (sender.allianceOwned and sender.isShip) or (receiver.allianceOwned and receiver.isShip) then
+            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
+        end
+        if (sender.allianceOwned and sender.isStation) or (receiver.allianceOwned and receiver.isStation) then
+            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
+        end
+        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
+            return
+        end
+    end
+
+    -- check distance
+    local transferDistance = math.max(TCTConfig.CrewMaxTransferDistance, sender.transporterRange or 0, receiver.transporterRange or 0)
+    if TCTConfig.CheckIfDocked and (sender.isStation or receiver.isStation) then
+        if ((sender.isStation and not sender:isDocked(receiver)) or (receiver.isStation and not receiver:isDocked(sender)))
+          and sender:getNearestDistance(receiver) > transferDistance then
+            player:sendChatMessage("", ChatMessageType.Error, "You must be docked to the station to transfer crew."%_t)
+            return
+        end
+    elseif sender:getNearestDistance(receiver) > transferDistance then
+        player:sendChatMessage("", ChatMessageType.Error, "You're too far away."%_t)
+        return
+    end
+
+    return true
+end
+
 function TransferCrewGoods.onShowWindow() -- overridden
     tct_isWindowShown = true
 
@@ -1714,36 +1761,7 @@ function TransferCrewGoods.transferCrew(crewmanIndex, otherIndex, selfToOther, a
     local player = Player(callingPlayer)
     if not player then return end
 
-    if sender.factionIndex ~= callingPlayer and sender.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (sender.allianceOwned and sender.isShip) or (receiver.allianceOwned and receiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (sender.allianceOwned and sender.isStation) or (receiver.allianceOwned and receiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.CrewMaxTransferDistance, sender.transporterRange or 0, receiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (sender.isStation or receiver.isStation) then
-        if ((sender.isStation and not sender:isDocked(receiver)) or (receiver.isStation and not receiver:isDocked(sender)))
-          and sender:getNearestDistance(receiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer crew."%_t)
-            return
-        end
-    elseif sender:getNearestDistance(receiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, sender, receiver) then return end
 
     local sorted = TransferCrewGoods.getSortedCrewmen(sender)
 
@@ -1778,36 +1796,7 @@ function TransferCrewGoods.transferAllCrew(otherIndex, selfToOther) -- overridde
     local player = Player(callingPlayer)
     if not player then return end
 
-    if sender.factionIndex ~= callingPlayer and sender.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (sender.allianceOwned and sender.isShip) or (receiver.allianceOwned and receiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (sender.allianceOwned and sender.isStation) or (receiver.allianceOwned and receiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.CrewMaxTransferDistance, sender.transporterRange or 0, receiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (sender.isStation or receiver.isStation) then
-        if ((sender.isStation and not sender:isDocked(receiver)) or (receiver.isStation and not receiver:isDocked(sender)))
-          and sender:getNearestDistance(receiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer crew."%_t)
-            return
-        end
-    elseif sender:getNearestDistance(receiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, sender, receiver) then return end
 
     local sorted = TransferCrewGoods.getSortedCrewmen(sender)
     for _, p in pairs(sorted) do
@@ -1832,36 +1821,7 @@ function TransferCrewGoods.transferCargo(cargoIndex, otherIndex, selfToOther, am
     local player = Player(callingPlayer)
     if not player then return end
 
-    if sender.factionIndex ~= callingPlayer and sender.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (sender.allianceOwned and sender.isShip) or (receiver.allianceOwned and receiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (sender.allianceOwned and sender.isStation) or (receiver.allianceOwned and receiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.CargoMaxTransferDistance, sender.transporterRange or 0, receiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (sender.isStation or receiver.isStation) then
-        if ((sender.isStation and not sender:isDocked(receiver)) or (receiver.isStation and not receiver:isDocked(sender)))
-          and sender:getNearestDistance(receiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer cargo."%_t)
-            return
-        end
-    elseif sender:getNearestDistance(receiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, sender, receiver) then return end
 
     -- get the cargo
     local good, availableAmount = sender:getCargo(cargoIndex)
@@ -1901,36 +1861,7 @@ function TransferCrewGoods.transferAllCargo(otherIndex, selfToOther) -- overridd
     local player = Player(callingPlayer)
     if not player then return end
 
-    if sender.factionIndex ~= callingPlayer and sender.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (sender.allianceOwned and sender.isShip) or (receiver.allianceOwned and receiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (sender.allianceOwned and sender.isStation) or (receiver.allianceOwned and receiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.CargoMaxTransferDistance, sender.transporterRange or 0, receiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (sender.isStation or receiver.isStation) then
-        if ((sender.isStation and not sender:isDocked(receiver)) or (receiver.isStation and not receiver:isDocked(sender)))
-          and sender:getNearestDistance(receiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer cargo."%_t)
-            return
-        end
-    elseif sender:getNearestDistance(receiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, sender, receiver) then return end
 
     -- get the cargo
     local cargos = sender:getCargos()
@@ -1967,39 +1898,9 @@ function TransferCrewGoods.transferFighter(sender, squad, index, receiver, recei
     local player = Player(callingPlayer)
     if not player then return end
 
-    local entityReceiver = Entity(receiver)
-
     local senderEntity = Entity(sender)
-    if senderEntity.factionIndex ~= callingPlayer and senderEntity.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (senderEntity.allianceOwned and senderEntity.isShip) or (entityReceiver.allianceOwned and entityReceiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (senderEntity.allianceOwned and senderEntity.isStation) or (entityReceiver.allianceOwned and entityReceiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.FightersMaxTransferDistance, senderEntity.transporterRange or 0, entityReceiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (senderEntity.isStation or entityReceiver.isStation) then
-        if ((senderEntity.isStation and not senderEntity:isDocked(entityReceiver)) or (entityReceiver.isStation and not entityReceiver:isDocked(senderEntity)))
-          and senderEntity:getNearestDistance(entityReceiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer fighters."%_t)
-            return
-        end
-    elseif senderEntity:getNearestDistance(entityReceiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    local receivingEntity = Entity(receiver)
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, senderEntity, receivingEntity) then return end
 
     local senderHangar = Hangar(sender)
     if not senderHangar then
@@ -2065,39 +1966,9 @@ function TransferCrewGoods.transferAllFighters(sender, receiver) -- overridden
     local player = Player(callingPlayer)
     if not player then return end
 
-    local entityReceiver = Entity(receiver)
-
     local senderEntity = Entity(sender)
-    if senderEntity.factionIndex ~= callingPlayer and senderEntity.factionIndex ~= player.allianceIndex then
-        player:sendChatMessage("", 1, "You don't own this craft."%_t)
-        return
-    end
-
-    if TCTConfig.RequireAlliancePrivileges then
-        local requiredPrivileges = {}
-        if (senderEntity.allianceOwned and senderEntity.isShip) or (entityReceiver.allianceOwned and entityReceiver.isShip) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageShips
-        end
-        if (senderEntity.allianceOwned and senderEntity.isStation) or (entityReceiver.allianceOwned and entityReceiver.isStation) then
-            requiredPrivileges[#requiredPrivileges+1] = AlliancePrivilege.ManageStations
-        end
-        if #requiredPrivileges > 0 and not getInteractingFaction(callingPlayer, unpack(requiredPrivileges)) then
-            return
-        end
-    end
-
-    -- check distance
-    local transferDistance = math.max(TCTConfig.FightersMaxTransferDistance, senderEntity.transporterRange or 0, entityReceiver.transporterRange or 0)
-    if TCTConfig.CheckIfDocked and (senderEntity.isStation or entityReceiver.isStation) then
-        if ((senderEntity.isStation and not senderEntity:isDocked(entityReceiver)) or (entityReceiver.isStation and not entityReceiver:isDocked(senderEntity)))
-          and senderEntity:getNearestDistance(entityReceiver) > transferDistance then
-            player:sendChatMessage("", 1, "You must be docked to the station to transfer fighters."%_t)
-            return
-        end
-    elseif senderEntity:getNearestDistance(entityReceiver) > transferDistance then
-        player:sendChatMessage("", 1, "You're too far away."%_t)
-        return
-    end
+    local receivingEntity = Entity(receiver)
+    if not TransferCrewGoods.checkPermissionsAndDistance(player, senderEntity, receivingEntity) then return end
 
     local senderHangar = Hangar(sender)
     if not senderHangar then
