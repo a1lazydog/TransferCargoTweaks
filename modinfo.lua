@@ -17,7 +17,7 @@ meta =
     description = "Adds several Quality of Life changes to the Transfer Crew/Cargo window, such as: sorting, search and favorites/trash system. Also allows to tweak transfer distance if installed on server side.",
 
     -- Insert all authors into this list
-    authors = {"Rinart73"},
+    authors = {"Rinart73","a1lazydog"},
 
     -- Version of your mod, should be in format 1.0.0 (major.minor.patch) or 1.0 (major.minor)
     -- This will be used to check for unmet dependencies or incompatibilities
@@ -40,7 +40,7 @@ meta =
     -- },
     dependencies = {
         {id = "1722652757", min = "1.3.7"},
-        {id = "Avorion", min = "0.26.1", max = "1.*"}
+        {id = "Avorion", min = "1.0.2", max = "1.0.2"}
     },
 
     -- Set to true if the mod only has to run on the server. Clients will get notified that the mod is running on the server, but they won't download it to themselves

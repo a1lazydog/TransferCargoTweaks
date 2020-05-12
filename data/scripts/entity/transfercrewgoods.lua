@@ -477,14 +477,22 @@ function TransferCrewGoods.initUI() -- overridden
     tct_selfTrashButtons = {}
 
     -- create fighters tab
-    local fightersTab = tct_tabbedWindow:createTab("Fighters"%_t, "data/textures/icons/fighter.png", "Exchange fighters"%_t)
+    TransferCrewGoods.createFightersTab(tct_tabbedWindow)
+
+    -- create torpedoes tab
+    TransferCrewGoods.createTorpedoesTab(tct_tabbedWindow)
+end
+
+function TransferCrewGoods.createFightersTab(tabbedWindow)
+    local fightersTab = tabbedWindow:createTab("Fighters"%_t, "data/textures/icons/fighter.png", "Exchange fighters"%_t)
     tct_fightersTabIndex = fightersTab.index
 
+    local vSplit = UIVerticalSplitter(Rect(fightersTab.size), 10, 0, 0.5)
     local leftLister = UIVerticalLister(vSplit.left, 0, 0)
     local rightLister = UIVerticalLister(vSplit.right, 0, 0)
 
-    leftLister.marginLeft = 5
-    rightLister.marginLeft = 5
+--    leftLister.marginLeft = 5
+--    rightLister.marginLeft = 5
 
     playerTransferAllFightersButton = fightersTab:createButton(Rect(), "Transfer All >>"%_t, "onPlayerTransferAllFightersPressed")
     leftLister:placeElementCenter(playerTransferAllFightersButton)
@@ -498,9 +506,9 @@ function TransferCrewGoods.initUI() -- overridden
         local label = fightersTab:createLabel(rect, "", 16)
         playerFighterLabels[i] = label
 
-        local rect = leftLister:placeCenter(vec2(leftLister.inner.width, 35))
-        rect.upper = vec2(rect.lower.x + 376, rect.upper.y)
-        local selection = fightersTab:createSelection(rect, 12)
+        local split = UIVerticalSplitter(leftLister:nextRect(35), 4, 0, 0.5)
+        split.leftSize = 27 * 12 + 4 * 13
+        local selection = fightersTab:createSelection(split.left, 12)
         selection.dropIntoEnabled = true
         selection.dragFromEnabled = true
         selection.entriesSelectable = false
@@ -512,14 +520,23 @@ function TransferCrewGoods.initUI() -- overridden
         isPlayerShipBySelection[selection.index] = true
         squadIndexBySelection[selection.index] = i - 1
 
+        local button = fightersTab:createButton(split.right, "", "onTransferSquadPressed")
+        button.icon = "data/textures/icons/arrow-right2.png"
+        button.tooltip = "Transfer Squad"%_t
+        isPlayerShipBySelection[button.index] = true
+        squadIndexBySelection[button.index] = i - 1
+
         -- right side (self)
         local rect = rightLister:placeCenter(vec2(rightLister.inner.width, 18))
         local label = fightersTab:createLabel(rect, "", 16)
         selfFighterLabels[i] = label
 
-        local rect = rightLister:placeCenter(vec2(rightLister.inner.width, 35))
-        rect.upper = vec2(rect.lower.x + 376, rect.upper.y)
-        local selection = fightersTab:createSelection(rect, 12)
+        local split = UIVerticalSplitter(rightLister:nextRect(35), 4, 0, 0.5)
+        split.leftSize = 27 * 12 + 4 * 13
+
+--        local rect = rightLister:placeCenter(vec2(rightLister.inner.width, 35))
+--        rect.upper = vec2(rect.lower.x + 376, rect.upper.y)
+        local selection = fightersTab:createSelection(split.left, 12)
         selection.dropIntoEnabled = true
         selection.dragFromEnabled = true
         selection.entriesSelectable = false
@@ -530,10 +547,13 @@ function TransferCrewGoods.initUI() -- overridden
         selfFighterSelections[i] = selection
         isPlayerShipBySelection[selection.index] = false
         squadIndexBySelection[selection.index] = i - 1
-    end
 
-    -- create torpedoes tab
-    TransferCrewGoods.createTorpedoesTab(tct_tabbedWindow)
+        local button = fightersTab:createButton(split.right, "", "onTransferSquadPressed")
+        button.icon = "data/textures/icons/arrow-left2.png"
+        button.tooltip = "Transfer Squad"%_t
+        isPlayerShipBySelection[button.index] = false
+        squadIndexBySelection[button.index] = i - 1
+    end
 end
 
 function TransferCrewGoods.createTorpedoesTab(tabbedWindow)
