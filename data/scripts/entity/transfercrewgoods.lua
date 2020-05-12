@@ -2,7 +2,7 @@ local Azimuth = include("azimuthlib-basic")
 
 local UTF8 -- Client includes
 local tct_isWindowShown, tct_favoritesFile, tct_stationFavorites, tct_playerCargoList, tct_selfCargoList, tct_cargoLowerCache, tct_playerPrevQuery, tct_selfPrevQuery, tct_playerGoodIndexesByName, tct_selfGoodIndexesByName, tct_playerGoodNames, tct_selfGoodNames, tct_playerGoodSearchNames, tct_selfGoodSearchNames, tct_playerCargoPrevCount, tct_selfCargoPrevCount, tct_playerAmountByIndex, tct_selfAmountByIndex, tct_playerFavoritesEnabled, tct_selfFavoritesEnabled, tct_playerLastHoveredRow, tct_selfLastHoveredRow, tct_playerCargoRows, tct_selfCargoRows -- Client
-local tct_tabbedWindow, tct_helpLabel, tct_crewTabIndex, tct_cargoTabIndex, tct_fightersTabIndex, tct_playerCrewWorkforceLabels, tct_selfCrewWorkforceLabels, tct_playerCrewLabels, tct_selfCrewLabels, tct_playerToggleSearchBtn, tct_selfToggleSearchBtn, tct_playerCargoSearchBox, tct_selfCargoSearchBox, tct_playerCargoLabels, tct_selfCargoLabels, tct_playerToggleFavoritesBtn, tct_selfToggleFavoritesBtn, tct_playerFavoriteButtons, tct_playerTrashButtons, tct_selfFavoriteButtons, tct_selfTrashButtons, tct_leftCargoLister, tct_rightCargoLister, tct_leftCargoFrame, tct_rightCargoFrame -- Client UI
+local tct_tabbedWindow, tct_helpLabel, tct_crewTabIndex, tct_cargoTabIndex, tct_fightersTabIndex, tct_torpedoesTabIndex, tct_playerCrewWorkforceLabels, tct_selfCrewWorkforceLabels, tct_playerCrewLabels, tct_selfCrewLabels, tct_playerToggleSearchBtn, tct_selfToggleSearchBtn, tct_playerCargoSearchBox, tct_selfCargoSearchBox, tct_playerCargoLabels, tct_selfCargoLabels, tct_playerToggleFavoritesBtn, tct_selfToggleFavoritesBtn, tct_playerFavoriteButtons, tct_playerTrashButtons, tct_selfFavoriteButtons, tct_selfTrashButtons, tct_leftCargoLister, tct_rightCargoLister, tct_leftCargoFrame, tct_rightCargoFrame -- Client UI
 local tct_playerSortGoodsFavorites, tct_selfSortGoodsFavorites, tct_playerSortGoods, tct_selfSortGoods, tct_getGoodColor, tct_createPlayerCargoRow, tct_createSelfCargoRow -- Client local functions
 local TCTConfig -- Client/Server
 
@@ -531,6 +531,22 @@ function TransferCrewGoods.initUI() -- overridden
         isPlayerShipBySelection[selection.index] = false
         squadIndexBySelection[selection.index] = i - 1
     end
+
+    -- create torpedoes tab
+    TransferCrewGoods.createTorpedoesTab(tct_tabbedWindow)
+end
+
+function TransferCrewGoods.createTorpedoesTab(tabbedWindow)
+    local torpedoesTab = tabbedWindow:createTab("Torpedoes"%_t, "data/textures/icons/missile-pod.png", "Exchange Torpedoes"%_t)
+    tct_torpedoesTabIndex = torpedoesTab.index
+
+    local vSplit = UIVerticalSplitter(Rect(torpedoesTab.size), 10, 0, 0.5)
+
+    torpedoesTab:createFrame(vSplit.left)
+    torpedoesTab:createFrame(vSplit.right)
+
+    TransferCrewGoods.createTorpedoesTabOneSide(torpedoesTab, vSplit.left, "data/textures/icons/arrow-right2.png", true)
+    TransferCrewGoods.createTorpedoesTabOneSide(torpedoesTab, vSplit.right, "data/textures/icons/arrow-left2.png", false)
 end
 
 function TransferCrewGoods.onShowWindow() -- overridden
@@ -915,6 +931,9 @@ function TransferCrewGoods.updateData() -- overridden
             end
         end
 
+    elseif currentTabIndex == tct_torpedoesTabIndex then -- update torpedoes info
+        -- update torpedoes
+        TransferCrewGoods.updateTorpedoesUI(playerShip, ship)
     end
 end
 
