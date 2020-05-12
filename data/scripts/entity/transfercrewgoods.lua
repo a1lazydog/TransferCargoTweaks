@@ -1853,8 +1853,11 @@ function TransferCrewGoods.transferCargo(cargoIndex, otherIndex, selfToOther, am
 
     -- make sure receiving ship has enough space
     if receiver.freeCargoSpace < good.size * amount then
-        player:sendChatMessage("", 1, "Not enough space on the other craft."%_t)
-        return
+        amount = math.floor(receiver.freeCargoSpace / good.size)
+        if amount == 0 then
+            player:sendChatMessage("", 1, "Not enough space on the other craft."%_t)
+            return
+        end
     end
 
     -- transfer
@@ -1923,6 +1926,8 @@ function TransferCrewGoods.transferAllCargo(otherIndex, selfToOther) -- overridd
             if amount == 0 then
                 player:sendChatMessage("", 1, "Not enough space on the other craft."%_t)
                 break;
+            else
+                player:sendChatMessage("", 2, "Not enough space on the other craft to transfer the full amount."%_t)
             end
         end
 
