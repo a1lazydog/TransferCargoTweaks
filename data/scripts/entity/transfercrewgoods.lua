@@ -1,10 +1,11 @@
 local Azimuth = include("azimuthlib-basic")
 
-local UTF8 -- Client includes
+local UTF8, TurretIngredients -- Client includes
 local tct_isWindowShown, tct_favoritesFile, tct_stationFavorites, tct_playerCargoList, tct_selfCargoList, tct_cargoLowerCache, tct_playerPrevQuery, tct_selfPrevQuery, tct_playerGoodIndexesByName, tct_selfGoodIndexesByName, tct_playerGoodNames, tct_selfGoodNames, tct_playerGoodSearchNames, tct_selfGoodSearchNames, tct_playerCargoPrevCount, tct_selfCargoPrevCount, tct_playerAmountByIndex, tct_selfAmountByIndex, tct_playerFavoritesEnabled, tct_selfFavoritesEnabled, tct_playerLastHoveredRow, tct_selfLastHoveredRow, tct_playerCargoRows, tct_selfCargoRows -- Client
 local tct_tabbedWindow, tct_helpLabel, tct_crewTabIndex, tct_cargoTabIndex, tct_fightersTabIndex, tct_torpedoesTabIndex, tct_playerCrewWorkforceLabels, tct_selfCrewWorkforceLabels, tct_playerCrewLabels, tct_selfCrewLabels, tct_playerToggleSearchBtn, tct_selfToggleSearchBtn, tct_playerCargoSearchBox, tct_selfCargoSearchBox, tct_playerCargoLabels, tct_selfCargoLabels, tct_playerToggleFavoritesBtn, tct_selfToggleFavoritesBtn, tct_playerFavoriteButtons, tct_playerTrashButtons, tct_selfFavoriteButtons, tct_selfTrashButtons, tct_leftCargoLister, tct_rightCargoLister, tct_leftCargoFrame, tct_rightCargoFrame -- Client UI
 local tct_playerSortGoodsFavorites, tct_selfSortGoodsFavorites, tct_playerSortGoods, tct_selfSortGoods, tct_getGoodColor, tct_createPlayerCargoRow, tct_createSelfCargoRow -- Client local functions
 local playerSquadMoveDownButtons, playerSquadMoveUpButtons, selfSquadMoveDownButtons, selfSquadMoveUpButtons, playerTransferSquadButtons, selfTransferSquadButtons
+local turretIngredientsCache
 local TCTConfig -- Client/Server
 
 
@@ -12,6 +13,7 @@ if onClient() then
 
 
     UTF8 = include("azimuthlib-utf8")
+    TurretIngredients = include("entity/turretingredientsflatlist")
 
     local configOptions = {
     _version = { default = "1.7", comment = "Config version. Don't touch" },
@@ -1487,12 +1489,15 @@ if onClient() then
                 local bar = playerCargoBars[rowNumber]
                 local overlayName = tct_playerCargoLabels[rowNumber]
                 local displayName = tct_playerGoodNames[i]
+                local icon = playerCargoIcons[rowNumber]
+                local goodColor = tct_getGoodColor(good)
+                local isTurretIngredient = TurretIngredients[good.name] ~= nil
+                local name = "${amount} ${good}"%_t % {amount = createMonetaryString(amount), good = actualDisplayName}
 
-                playerCargoIcons[rowNumber].picture = good.icon
+                icon.picture = good.icon
+                icon.color = goodColor
                 bar:setRange(0, playerMaxSpace)
                 bar.value = amount * good.size
-                local name = "${amount} ${good}"%_t % {amount = createMonetaryString(amount), good = actualDisplayName}
-                bar.name = name
 
                 tct_playerGoodSearchNames[rowNumber] = displayName
 
@@ -1545,8 +1550,15 @@ if onClient() then
                     overlayName.elem.fontSize = 10
                     overlayName.elem.rect = Rect(overlayName.elem.rect.topLeft + vec2(0, -3), overlayName.elem.rect.bottomRight)
                 end
-                overlayName.elem.caption = name
-                overlayName.elem.color = tct_getGoodColor(good)
+                overlayName.elem.color = goodColor
+
+                if (isTurretIngredient) then
+                    overlayName.elem.caption = name .. " [T]"
+                    bar.name = name .. " \n[Turret Ingredient]\nThis good can be used in turret construction"
+                else
+                    overlayName.elem.caption = name
+                    bar.name = name
+                end
             end
         end
 
@@ -1638,12 +1650,15 @@ if onClient() then
                 local bar = selfCargoBars[rowNumber]
                 local overlayName = tct_selfCargoLabels[rowNumber]
                 local displayName = tct_selfGoodNames[i]
+                local icon = selfCargoIcons[rowNumber]
+                local goodColor = tct_getGoodColor(good)
+                local isTurretIngredient = TurretIngredients[good.name] ~= nil
+                local name = "${amount} ${good}"%_t % {amount = createMonetaryString(amount), good = actualDisplayName}
 
-                selfCargoIcons[rowNumber].picture = good.icon
+                icon.picture = good.icon
+                icon.color = goodColor
                 bar:setRange(0, selfMaxSpace)
                 bar.value = amount * good.size
-                local name = "${amount} ${good}"%_t % {amount = createMonetaryString(amount), good = actualDisplayName}
-                bar.name = name
 
                 tct_selfGoodSearchNames[rowNumber] = displayName
 
@@ -1695,8 +1710,15 @@ if onClient() then
                     overlayName.elem.fontSize = 10
                     overlayName.elem.rect = Rect(overlayName.elem.rect.topLeft + vec2(0, -3), overlayName.elem.rect.bottomRight)
                 end
-                overlayName.elem.caption = name
-                overlayName.elem.color = tct_getGoodColor(good)
+                overlayName.elem.color = goodColor
+
+                if (isTurretIngredient) then
+                    overlayName.elem.caption = name .. " [T]"
+                    bar.name = name .. " \n\n[Turret Ingredient]\nThis good can be used in turret construction"
+                else
+                    overlayName.elem.caption = name
+                    bar.name = name
+                end
             end
         end
 
