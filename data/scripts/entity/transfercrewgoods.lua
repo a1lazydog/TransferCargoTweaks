@@ -4,6 +4,7 @@ local UTF8 -- Client includes
 local tct_isWindowShown, tct_favoritesFile, tct_stationFavorites, tct_playerCargoList, tct_selfCargoList, tct_cargoLowerCache, tct_playerPrevQuery, tct_selfPrevQuery, tct_playerGoodIndexesByName, tct_selfGoodIndexesByName, tct_playerGoodNames, tct_selfGoodNames, tct_playerGoodSearchNames, tct_selfGoodSearchNames, tct_playerCargoPrevCount, tct_selfCargoPrevCount, tct_playerAmountByIndex, tct_selfAmountByIndex, tct_playerFavoritesEnabled, tct_selfFavoritesEnabled, tct_playerLastHoveredRow, tct_selfLastHoveredRow, tct_playerCargoRows, tct_selfCargoRows -- Client
 local tct_tabbedWindow, tct_helpLabel, tct_crewTabIndex, tct_cargoTabIndex, tct_fightersTabIndex, tct_torpedoesTabIndex, tct_playerCrewWorkforceLabels, tct_selfCrewWorkforceLabels, tct_playerCrewLabels, tct_selfCrewLabels, tct_playerToggleSearchBtn, tct_selfToggleSearchBtn, tct_playerCargoSearchBox, tct_selfCargoSearchBox, tct_playerCargoLabels, tct_selfCargoLabels, tct_playerToggleFavoritesBtn, tct_selfToggleFavoritesBtn, tct_playerFavoriteButtons, tct_playerTrashButtons, tct_selfFavoriteButtons, tct_selfTrashButtons, tct_leftCargoLister, tct_rightCargoLister, tct_leftCargoFrame, tct_rightCargoFrame -- Client UI
 local tct_playerSortGoodsFavorites, tct_selfSortGoodsFavorites, tct_playerSortGoods, tct_selfSortGoods, tct_getGoodColor, tct_createPlayerCargoRow, tct_createSelfCargoRow -- Client local functions
+local playerSquadMoveDownButtons, playerSquadMoveUpButtons, selfSquadMoveDownButtons, selfSquadMoveUpButtons, playerTransferSquadButtons, selfTransferSquadButtons
 local TCTConfig -- Client/Server
 
 
@@ -46,6 +47,13 @@ if onClient() then
     -- favorites enabled status
     tct_playerFavoritesEnabled = TCTConfig.EnableFavorites and TCTConfig.ToggleFavoritesByDefault
     tct_selfFavoritesEnabled = TCTConfig.EnableFavorites and TCTConfig.ToggleFavoritesByDefault
+
+    playerSquadMoveDownButtons = {}
+    playerSquadMoveUpButtons = {}
+    playerTransferSquadButtons = {}
+    selfSquadMoveDownButtons = {}
+    selfSquadMoveUpButtons = {}
+    selfTransferSquadButtons = {}
 
     -- LOCAL FUNCTIONS --
 
@@ -491,9 +499,6 @@ if onClient() then
         local leftLister = UIVerticalLister(vSplit.left, 0, 0)
         local rightLister = UIVerticalLister(vSplit.right, 0, 0)
 
-    --    leftLister.marginLeft = 5
-    --    rightLister.marginLeft = 5
-
         playerTransferAllFightersButton = fightersTab:createButton(Rect(), "Transfer All >>"%_t, "onPlayerTransferAllFightersPressed")
         leftLister:placeElementCenter(playerTransferAllFightersButton)
 
@@ -502,57 +507,66 @@ if onClient() then
 
         for i = 1, 10 do
             -- left side (player)
-            local rect = leftLister:placeCenter(vec2(leftLister.inner.width, 18))
-            local label = fightersTab:createLabel(rect, "", 16)
-            playerFighterLabels[i] = label
-
-            local split = UIVerticalSplitter(leftLister:nextRect(35), 4, 0, 0.5)
-            split.leftSize = 27 * 12 + 4 * 13
-            local selection = fightersTab:createSelection(split.left, 12)
-            selection.dropIntoEnabled = true
-            selection.dragFromEnabled = true
-            selection.entriesSelectable = false
-            selection.onReceivedFunction = "onFighterReceived"
-            selection.onClickedFunction = "onFighterClicked"
-            selection.padding = 4
-
-            playerFighterSelections[i] = selection
-            isPlayerShipBySelection[selection.index] = true
-            squadIndexBySelection[selection.index] = i - 1
-
-            local button = fightersTab:createButton(split.right, "", "onTransferSquadPressed")
-            button.icon = "data/textures/icons/arrow-right2.png"
-            button.tooltip = "Transfer Squad"%_t
-            isPlayerShipBySelection[button.index] = true
-            squadIndexBySelection[button.index] = i - 1
+            TransferCrewGoods.createFightersRow(fightersTab, leftLister, i, true)
 
             -- right side (self)
-            local rect = rightLister:placeCenter(vec2(rightLister.inner.width, 18))
-            local label = fightersTab:createLabel(rect, "", 16)
+            TransferCrewGoods.createFightersRow(fightersTab, rightLister, i, false)
+        end
+    end
+
+    function TransferCrewGoods.createFightersRow(fightersTab, fighterLister, i, isPlayerShip)
+        local rect = fighterLister:placeCenter(vec2(fighterLister.inner.width, 18))
+        local split = UIVerticalSplitter(rect, 4, 0, 0.5)
+        split.leftSize = 48
+
+        local splitButtons = UIVerticalSplitter(split.left, 4, 0, 0.5)
+
+        local moveUpButton = fightersTab:createButton(splitButtons.left, "", "onMoveSquadUpPressed")
+        moveUpButton.icon = "data/textures/icons/arrow-up.png"
+        moveUpButton.tooltip = "Move Squad Up"%_t
+        isPlayerShipBySelection[moveUpButton.index] = isPlayerShip
+        squadIndexBySelection[moveUpButton.index] = i - 1
+
+        local moveDownButton = fightersTab:createButton(splitButtons.right, "", "onMoveSquadDownPressed")
+        moveDownButton.icon = "data/textures/icons/arrow-down.png"
+        moveDownButton.tooltip = "Move Squad Down"%_t
+        isPlayerShipBySelection[moveDownButton.index] = isPlayerShip
+        squadIndexBySelection[moveDownButton.index] = i - 1
+
+        local label = fightersTab:createLabel(split.right, "", 16)
+
+        local split = UIVerticalSplitter(fighterLister:nextRect(35), 4, 0, 0.5)
+        split.leftSize = 27 * 12 + 4 * 13
+        local selection = fightersTab:createSelection(split.left, 12)
+        selection.dropIntoEnabled = true
+        selection.dragFromEnabled = true
+        selection.entriesSelectable = false
+        selection.onReceivedFunction = "onFighterReceived"
+        selection.onClickedFunction = "onFighterClicked"
+        selection.padding = 4
+
+        isPlayerShipBySelection[selection.index] = isPlayerShip
+        squadIndexBySelection[selection.index] = i - 1
+
+        local transferButton = fightersTab:createButton(split.right, "", "onTransferSquadPressed")
+        transferButton.tooltip = "Transfer Squad"%_t
+        isPlayerShipBySelection[transferButton.index] = isPlayerShip
+        squadIndexBySelection[transferButton.index] = i - 1
+        
+        if isPlayerShip then 
+            playerFighterLabels[i] = label
+            playerFighterSelections[i] = selection
+            transferButton.icon = "data/textures/icons/arrow-right2.png"
+            playerSquadMoveDownButtons[i] = moveDownButton
+            playerSquadMoveUpButtons[i] = moveUpButton
+            playerTransferSquadButtons[i] = transferButton
+        else
             selfFighterLabels[i] = label
-
-            local split = UIVerticalSplitter(rightLister:nextRect(35), 4, 0, 0.5)
-            split.leftSize = 27 * 12 + 4 * 13
-
-    --        local rect = rightLister:placeCenter(vec2(rightLister.inner.width, 35))
-    --        rect.upper = vec2(rect.lower.x + 376, rect.upper.y)
-            local selection = fightersTab:createSelection(split.left, 12)
-            selection.dropIntoEnabled = true
-            selection.dragFromEnabled = true
-            selection.entriesSelectable = false
-            selection.onReceivedFunction = "onFighterReceived"
-            selection.onClickedFunction = "onFighterClicked"
-            selection.padding = 4
-
             selfFighterSelections[i] = selection
-            isPlayerShipBySelection[selection.index] = false
-            squadIndexBySelection[selection.index] = i - 1
-
-            local button = fightersTab:createButton(split.right, "", "onTransferSquadPressed")
-            button.icon = "data/textures/icons/arrow-left2.png"
-            button.tooltip = "Transfer Squad"%_t
-            isPlayerShipBySelection[button.index] = false
-            squadIndexBySelection[button.index] = i - 1
+            transferButton.icon = "data/textures/icons/arrow-left2.png"
+            selfSquadMoveDownButtons[i] = moveDownButton
+            selfSquadMoveUpButtons[i] = moveUpButton
+            selfTransferSquadButtons[i] = transferButton
         end
     end
 
@@ -884,9 +898,15 @@ if onClient() then
 
             for i = 1, #playerFighterLabels do
                 playerFighterLabels[i].visible = false
-                selfFighterLabels[i].visible = false
                 playerFighterSelections[i].visible = false
+                playerSquadMoveUpButtons[i].visible = false
+                playerSquadMoveDownButtons[i].visible = false
+                playerTransferSquadButtons[i].visible = false
                 selfFighterSelections[i].visible = false
+                selfFighterLabels[i].visible = false
+                selfSquadMoveDownButtons[i].visible = false
+                selfSquadMoveUpButtons[i].visible = false
+                selfTransferSquadButtons[i].visible = false
             end
 
             -- left side (player)
@@ -899,9 +919,17 @@ if onClient() then
                     label.caption = hangar:getSquadName(squad)
                     label:show()
 
+                    if squad ~= 0 then
+                        playerSquadMoveUpButtons[squad + 1].visible = true
+                    end
+                    if squad ~= 9 then
+                        playerSquadMoveDownButtons[squad + 1].visible = true
+                    end
+
                     local selection = playerFighterSelections[squad + 1]
                     selection:show()
                     selection:clear()
+                    local hasAtLeastOneFighter = false
                     for i = 0, hangar:getSquadFighters(squad) - 1 do
                         local fighter = hangar:getFighter(squad, i)
 
@@ -912,11 +940,14 @@ if onClient() then
                         item.value1 = i
 
                         selection:add(item, i)
+                        hasAtLeastOneFighter = true
                     end
 
                     for i = hangar:getSquadFighters(squad), 11 do
                         selection:addEmpty(i)
                     end
+                    
+                    playerTransferSquadButtons[squad + 1].visible = hasAtLeastOneFighter
                 end
             end
 
@@ -930,9 +961,17 @@ if onClient() then
                     label.caption = hangar:getSquadName(squad)
                     label:show()
 
+                    if squad ~= 0 then
+                        selfSquadMoveUpButtons[squad + 1].visible = true
+                    end
+                    if squad ~= 9 then
+                        selfSquadMoveDownButtons[squad + 1].visible = true
+                    end
+
                     local selection = selfFighterSelections[squad + 1]
                     selection:show()
                     selection:clear()
+                    local hasAtLeastOneFighter = false
                     for i = 0, hangar:getSquadFighters(squad) - 1 do
                         local fighter = hangar:getFighter(squad, i)
 
@@ -943,11 +982,14 @@ if onClient() then
                         item.value1 = i
 
                         selection:add(item, i)
+                        hasAtLeastOneFighter = true
                     end
 
                     for i = hangar:getSquadFighters(squad), 11 do
                         selection:addEmpty(i)
                     end
+                    
+                    selfTransferSquadButtons[squad + 1].visible = hasAtLeastOneFighter
                 end
             end
 
@@ -1699,6 +1741,32 @@ if onClient() then
         tct_selfCargoPrevCount = rowNumber
     end
 
+    function TransferCrewGoods.onMoveSquadUpPressed(button)
+        local squadIndex = squadIndexBySelection[button.index]
+        if squadIndex == nil or squadIndex == 0 then
+            return
+        end
+    
+        if isPlayerShipBySelection[button.index] then
+            invokeServerFunction("moveSquad", Player().craftIndex, squadIndex, squadIndex - 1)
+        else
+            invokeServerFunction("moveSquad", Entity().index, squadIndex, squadIndex - 1)
+        end
+    end
+
+    function TransferCrewGoods.onMoveSquadDownPressed(button)
+        local squadIndex = squadIndexBySelection[button.index]
+        if squadIndex == nil then
+            return
+        end
+    
+        if isPlayerShipBySelection[button.index] then
+            invokeServerFunction("moveSquad", Player().craftIndex, squadIndex, squadIndex + 1)
+        else
+            invokeServerFunction("moveSquad", Entity().index, squadIndex, squadIndex + 1)
+        end
+    end
+
 
 else -- onServer
 
@@ -1765,6 +1833,24 @@ else -- onServer
 
         return true
     end
+
+    function TransferCrewGoods.moveSquad(entityIndex, squadIndex, newSquadIndex)
+        
+        local player = Player(callingPlayer)
+        if not player then return end
+
+        local entity = Entity(entityIndex)
+
+        if not entity then return end
+
+        local hangar = Hangar(entity)
+        if not hangar then return end
+
+        hangar:moveSquad(squadIndex, newSquadIndex)
+
+        invokeClientFunction(player, "updateData")
+    end
+    callable(TransferCrewGoods, "moveSquad")
 
     function TransferCrewGoods.transferCargo(cargoIndex, otherIndex, selfToOther, amount) -- overridden
         local sender
