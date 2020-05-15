@@ -1,6 +1,7 @@
 local Azimuth = include("azimuthlib-basic")
 
 local UTF8, TurretIngredients -- Client includes
+local markFavStr, unmarkFavStr, markTrashStr, unmarkTrashStr -- string consts
 local tct_isWindowShown, tct_favoritesFile, tct_stationFavorites, tct_playerCargoList, tct_selfCargoList, tct_cargoLowerCache, tct_playerPrevQuery, tct_selfPrevQuery, tct_playerGoodIndexesByName, tct_selfGoodIndexesByName, tct_playerGoodNames, tct_selfGoodNames, tct_playerGoodSearchNames, tct_selfGoodSearchNames, tct_playerCargoPrevCount, tct_selfCargoPrevCount, tct_playerAmountByIndex, tct_selfAmountByIndex, tct_playerFavoritesEnabled, tct_selfFavoritesEnabled, tct_playerLastHoveredRow, tct_selfLastHoveredRow, tct_playerCargoRows, tct_selfCargoRows -- Client
 local tct_tabbedWindow, tct_helpLabel, tct_crewTabIndex, tct_cargoTabIndex, tct_fightersTabIndex, tct_torpedoesTabIndex, tct_playerCrewWorkforceLabels, tct_selfCrewWorkforceLabels, tct_playerCrewLabels, tct_selfCrewLabels, tct_playerToggleSearchBtn, tct_selfToggleSearchBtn, tct_playerCargoSearchBox, tct_selfCargoSearchBox, tct_playerCargoLabels, tct_selfCargoLabels, tct_playerToggleFavoritesBtn, tct_selfToggleFavoritesBtn, tct_playerFavoriteButtons, tct_playerTrashButtons, tct_selfFavoriteButtons, tct_selfTrashButtons, tct_leftCargoLister, tct_rightCargoLister, tct_leftCargoFrame, tct_rightCargoFrame -- Client UI
 local tct_playerSortGoodsFavorites, tct_selfSortGoodsFavorites, tct_playerSortGoods, tct_selfSortGoods, tct_getGoodColor, tct_createPlayerCargoRow, tct_createSelfCargoRow -- Client local functions
@@ -56,6 +57,11 @@ if onClient() then
     selfSquadMoveDownButtons = {}
     selfSquadMoveUpButtons = {}
     selfTransferSquadButtons = {}
+
+    markFavStr = "Right-Click to favorite this item"
+    unmarkFavStr = "Right-Click to unfavorite this item"
+    markTrashStr = "Right-Click to mark as trash"
+    unmarkTrashStr = "Right-Click to unmark as trash"
 
     -- LOCAL FUNCTIONS --
 
@@ -139,6 +145,19 @@ if onClient() then
             return ColorRGB(0, 0.7, 0.82)
         end
         return ColorRGB(1, 1, 1)
+    end
+
+    tct_getFighterSquadTypeLabel = function(squadType)
+        if squadType == FighterType.Fighter then
+            return "Combat Fighters"
+        end
+        if squadType == FighterType.CargoShuttle then
+            return "Cargo Shuttles"
+        end
+        if squadType == FighterType.CrewShuttle then
+            return "Crew Shuttles"
+        end
+        return ""
     end
 
     tct_createPlayerCargoRow = function()
@@ -422,10 +441,21 @@ if onClient() then
             textboxIndexByButton[button.index] = box.index
         end
 
-        local cargoTab = tct_tabbedWindow:createTab("Cargo"%_t, "data/textures/icons/trade.png", "Exchange cargo"%_t)
+        -- create cargo tab
+        TransferCrewGoods.createCargoTab(tct_tabbedWindow)
+
+        -- create fighters tab
+        TransferCrewGoods.createFightersTab(tct_tabbedWindow)
+
+        -- create torpedoes tab
+        TransferCrewGoods.createTorpedoesTab(tct_tabbedWindow)
+    end
+
+    function TransferCrewGoods.createCargoTab(tabbedWindow)
+        local cargoTab = tabbedWindow:createTab("Cargo"%_t, "data/textures/icons/trade.png", "Exchange cargo"%_t)
         tct_cargoTabIndex = cargoTab.index
 
-        -- have to use "left" twice here since the coordinates are relative and the UI would be displaced to the right otherwise
+        local vSplit = UIVerticalSplitter(Rect(cargoTab.size), 10, 0, 0.5)
         tct_leftCargoLister = UIVerticalLister(vSplit.left, 10, 10)
         tct_rightCargoLister = UIVerticalLister(vSplit.left, 10, 10)
 
@@ -485,12 +515,6 @@ if onClient() then
         tct_playerTrashButtons = {}
         tct_selfFavoriteButtons = {}
         tct_selfTrashButtons = {}
-
-        -- create fighters tab
-        TransferCrewGoods.createFightersTab(tct_tabbedWindow)
-
-        -- create torpedoes tab
-        TransferCrewGoods.createTorpedoesTab(tct_tabbedWindow)
     end
 
     function TransferCrewGoods.createFightersTab(tabbedWindow)
@@ -919,6 +943,7 @@ if onClient() then
                 for _, squad in pairs(squads) do
                     local label = playerFighterLabels[squad + 1]
                     label.caption = hangar:getSquadName(squad)
+                    label.tooltip = tct_getFighterSquadTypeLabel(hangar:getSquadFighterType(squad))
                     label:show()
 
                     if squad ~= 0 then
@@ -961,6 +986,7 @@ if onClient() then
                 for _, squad in pairs(squads) do
                     local label = selfFighterLabels[squad + 1]
                     label.caption = hangar:getSquadName(squad)
+                    label.tooltip = tct_getFighterSquadTypeLabel(hangar:getSquadFighterType(squad))
                     label:show()
 
                     if squad ~= 0 then
@@ -1527,13 +1553,19 @@ if onClient() then
                     local priority = tct_stationFavorites[1][nameWithStatus]
                     if priority == 2 then
                         tct_playerFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/star.png"
+                        tct_playerFavoriteButtons[rowNumber].tooltip = unmarkFavStr
                         tct_playerTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_playerTrashButtons[rowNumber].tooltip = markTrashStr
                     elseif priority == 0 then
                         tct_playerFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_playerFavoriteButtons[rowNumber].tooltip = markFavStr
                         tct_playerTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/trash.png"
+                        tct_playerTrashButtons[rowNumber].tooltip = unmarkTrashStr
                     else
                         tct_playerFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_playerFavoriteButtons[rowNumber].tooltip = markFavStr
                         tct_playerTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_playerTrashButtons[rowNumber].tooltip = markTrashStr
                     end
                 end
 
@@ -1688,13 +1720,19 @@ if onClient() then
                     local priority = tct_stationFavorites[2][nameWithStatus]
                     if priority == 2 then
                         tct_selfFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/star.png"
+                        tct_selfFavoriteButtons[rowNumber].tooltip = unmarkFavStr
                         tct_selfTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_selfTrashButtons[rowNumber].tooltip = markTrashStr
                     elseif priority == 0 then
                         tct_selfFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_selfFavoriteButtons[rowNumber].tooltip = markFavStr
                         tct_selfTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/trash.png"
+                        tct_selfTrashButtons[rowNumber].tooltip = unmarkFavStr
                     else
                         tct_selfFavoriteButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_selfFavoriteButtons[rowNumber].tooltip = markFavStr
                         tct_selfTrashButtons[rowNumber].picture = "data/textures/icons/transfercargotweaks/empty.png"
+                        tct_selfTrashButtons[rowNumber].tooltip = markTrashStr
                     end
                 end
 
